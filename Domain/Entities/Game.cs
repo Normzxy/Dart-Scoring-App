@@ -3,93 +3,116 @@ using Domain.ValueObjects;
 
 namespace Domain.Entities;
 
+/// <summary>
+/// Aggregate root representing the overall state of a game.
+/// Stores the current game state and the history of the match, without any mode-specific rules.
+/// </summary>
 public class Game
 {
     private readonly IGameMode _gameMode;
     private readonly List<Player> _players = new();
-    private readonly Dictionary<Guid, int> _score = new();
+    private readonly Dictionary<Guid, PlayerScore> _scoreStates = new();
     private readonly List<Throw> _history = new();
-    private readonly Dictionary<Guid, int> _turnStartScoreSnapshot = new();
-    
-    private int _currentPlayerIndex = 0;
+
+    private PlayerScore? _turnSnapshot = null;
+    private int _currentPlayerIdx = 0;
     private int _dartsThrown = 0;
 
     public Guid Id { get; } = Guid.NewGuid();
     public IReadOnlyList<Player> Players => _players.AsReadOnly();
     public IReadOnlyList<Throw> History => _history.AsReadOnly();
-    public bool IsFinished { get; private set; } = false;
+    public bool IsGameFinished { get; private set; } = false;
     public Guid? WinnerId { get; private set; } = null;
 
-    /// <summary>
-    /// Creates new game based on specified mode.
-    /// </summary>
-    public Game(IEnumerable<Player> players, IGameMode mode)
+    public Game(IGameMode gameMode, List<Player> players)
     {
-        _gameMode = mode ?? throw new ArgumentNullException(nameof(mode));
+        _gameMode = gameMode ?? throw new ArgumentNullException(nameof(gameMode));
+
         ArgumentNullException.ThrowIfNull(players);
-
         _players.AddRange(players);
-        if (_players.Count == 0) throw new ArgumentException("At least one player is required.");
 
-        var startingScore = _gameMode.GetStartingScore();
-        foreach (var p in _players)
-            _score[p.Id] = startingScore;
+        if (_players.Count == 0)
+        {
+            throw new ArgumentException("At least one player is required.", nameof(players));
+        }
+
+        foreach (var player in _players)
+        {
+            _scoreStates[player.Id] = _gameMode.CreateInitialScore(player.Id);
+        }
     }
+    
+    public Player CurrentPlayer => _players[_currentPlayerIdx];
+    
+    public PlayerScore GetPlayerState(Guid playerId) =>
+        _scoreStates.TryGetValue(playerId, out var state) ? state : throw new KeyNotFoundException();
 
-    public Player CurrentPlayer => _players[_currentPlayerIndex];
-
-    public int ScoreForPlayer(Guid playerId) => _score.TryGetValue(playerId, out var v) ? v : throw new KeyNotFoundException();
-
-    // _currentPlayerIndex instead of playerId?
+    public IReadOnlyDictionary<Guid, PlayerScore> GetAllPlayerStates() =>
+        _scoreStates;
+    
     public ThrowEvaluationResult RegisterThrow(Guid playerId, ThrowData throwData)
     {
-        if (IsFinished) throw new InvalidOperationException("Game already finished.");
-        
-        if (playerId != CurrentPlayer.Id) throw new InvalidOperationException("Something wrong with player's ID.");
-        
+        if (IsGameFinished) throw new InvalidOperationException("Game already finished.");
+        if (playerId != CurrentPlayer.Id)
+        {
+            throw new InvalidOperationException("Not this player's turn.");
+        }
         ArgumentNullException.ThrowIfNull(throwData);
-
+        
+        // Scores snapshot before editing.
         if (_dartsThrown == 0)
         {
-            _turnStartScoreSnapshot[playerId] = _score[playerId];
+            _turnSnapshot = _scoreStates[playerId];
         }
         
-        // Throw result is evaluated here, based on a specific game mode.
-        var modeBasedEvaluation = _gameMode.EvaluateThrow(
-            playerId, _score[playerId], throwData);
+        var currentScore = _scoreStates[playerId];
         
-        var newThrow = new Throw(playerId, throwData);
-        _history.Add(newThrow);
+        // Save throw data with aditional idenitifiers.
+        var @throw = new Throw(playerId, throwData);
+        _history.Add(@throw);
+        
+        // Score evaluation for a specific game mode, based on a throw info.
+        var throwEvaluation = _gameMode.EvaluateThrow(playerId, currentScore, throwData);
 
-        _score[playerId] = modeBasedEvaluation.UpdatedScoreValue;
+        // Update other player's score if needed.
+        if (throwEvaluation.OtherUpdatedStates != null)
+        {
+            foreach (var kv in throwEvaluation.OtherUpdatedStates)
+            {
+                _scoreStates[kv.Key] = kv.Value;
+            }
+        }
 
-        switch (modeBasedEvaluation.Outcome)
+        // Game state update for latest throw.
+        switch (throwEvaluation.Outcome)
         {
             case ThrowOutcome.Bust:
-                _score[playerId] = _turnStartScoreSnapshot[playerId];
+                _scoreStates[playerId] = _turnSnapshot ?? throw new InvalidOperationException("Turn snapshot missing during bust.");
                 EndTurn();
-                return modeBasedEvaluation;
+                return throwEvaluation;
 
             case ThrowOutcome.Win:
-                IsFinished = true;
-                WinnerId = modeBasedEvaluation.WinnerId;
-                return modeBasedEvaluation;
+                _scoreStates[playerId] = throwEvaluation.UpdatedScore;
+                IsGameFinished = true;
+                WinnerId = playerId;
+                return throwEvaluation;
 
             case ThrowOutcome.Continue:
+                _scoreStates[playerId] = throwEvaluation.UpdatedScore;
                 _dartsThrown++;
                 if (_dartsThrown >= 3)
                     EndTurn();
-                return modeBasedEvaluation;
+                return throwEvaluation;
 
             default:
-                throw new InvalidOperationException("Something wrong with evaluating the throw outcome.");
+                throw new InvalidOperationException("Unsupported ThrowOutcome.");
         }
     }
     
     private void EndTurn()
     {
         _dartsThrown = 0;
-        _turnStartScoreSnapshot.Remove(CurrentPlayer.Id);
-        _currentPlayerIndex = (_currentPlayerIndex + 1) % _players.Count;
+        _turnSnapshot = null;
+        _currentPlayerIdx = (_currentPlayerIdx + 1) % _players.Count;
     }
 }

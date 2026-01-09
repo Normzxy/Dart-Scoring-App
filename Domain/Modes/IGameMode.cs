@@ -4,15 +4,15 @@ using ValueObjects;
 public interface IGameMode
 {
     /// <summary>
-    /// Starting score for specific game mode.
+    /// Creates a specific initial score state according to the specific game mode.
     /// </summary>
-    int GetStartingScore();
-
+    PlayerScore CreateInitialScore(Guid playerId);
+    
     /// <summary>
-    /// Evaluates throw based on a specific game mode.
+    /// Evaluates the result of a throw according to the specific game mode.
     /// </summary>
     ThrowEvaluationResult EvaluateThrow(
         Guid playerId,
-        int currentScore,
+        PlayerScore playerScore,
         ThrowData throwData);
 }

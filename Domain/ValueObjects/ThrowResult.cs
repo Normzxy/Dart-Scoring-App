@@ -1,4 +1,5 @@
 ﻿namespace Domain.ValueObjects;
+using Modes;
 
 public enum ThrowOutcome
 {
@@ -7,28 +8,37 @@ public enum ThrowOutcome
     Win
 }
 
+/// <summary>
+/// Returns information about the result of the throw, based on the current game state.
+/// </summary>
 public sealed record ThrowEvaluationResult
 {
-    public ThrowOutcome Outcome { get; }
-    public int UpdatedScoreValue { get; }
-    public Guid? WinnerId { get; }
+    public ThrowOutcome Outcome { get; init; }
+    public PlayerScore UpdatedScore { get; init; } = null!;
+    // Optional, because those are edited only in specific situations.
+    public IReadOnlyDictionary<Guid, PlayerScore>? OtherUpdatedStates { get; init; }
+    
+    public static ThrowEvaluationResult Continue(
+        PlayerScore updatedScore,
+        IReadOnlyDictionary<Guid, PlayerScore>? othersScore = null) => new() 
+    { 
+        Outcome = ThrowOutcome.Continue, 
+        UpdatedScore = updatedScore, 
+        OtherUpdatedStates = othersScore
+    };
+    
+    public static ThrowEvaluationResult Bust(
+        PlayerScore restoredScore) => new()
+    { 
+        Outcome = ThrowOutcome.Bust,
+        UpdatedScore = restoredScore
+    };
 
-    private ThrowEvaluationResult(
-        ThrowOutcome outcome,
-        int updatedScoreValue,
-        Guid? winnerId = null)
-    {
-        Outcome = outcome;
-        UpdatedScoreValue = updatedScoreValue;
-        WinnerId = winnerId;
-    }
-
-    public static ThrowEvaluationResult Continue(int newScore) =>
-        new(ThrowOutcome.Continue, newScore);
-
-    public static ThrowEvaluationResult Bust(int restoredScore) =>
-        new(ThrowOutcome.Bust, restoredScore);
-
-    public static ThrowEvaluationResult Win(Guid winnerId, int finalScore) =>
-        new(ThrowOutcome.Win, finalScore, winnerId);
+    public static ThrowEvaluationResult Win(
+        Guid winnerId,
+        PlayerScore finalState) => new() 
+    { 
+        Outcome = ThrowOutcome.Win,
+        UpdatedScore = finalState
+    };
 }

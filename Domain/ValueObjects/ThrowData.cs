@@ -1,11 +1,13 @@
 ﻿namespace Domain.ValueObjects;
 using Exceptions;
 
-public sealed class ThrowData
+/// <summary>
+/// Raw numerical data of the single throw with certain restrictions.
+/// </summary>
+public sealed record ThrowData
 {
     public int Value { get; }
     public int Multiplier { get; }
-    
     public int Score => Value * Multiplier;
 
     public ThrowData(int value, int multiplier)

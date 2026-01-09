@@ -1,6 +1,9 @@
 ﻿namespace Domain.Entities;
 using Domain.ValueObjects;
 
+/// <summary>
+/// ThrowData VO with identification details.
+/// </summary>
 public class Throw(Guid playerId, ThrowData data)
 {
     public Guid Id { get; private set; } = Guid.NewGuid();
