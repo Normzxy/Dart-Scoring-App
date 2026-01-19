@@ -11,7 +11,7 @@ public class ClassicSetsMode(ClassicSetsModeSettings modeSettings) : IGameMode
         new ClassicSetsPlayerScore
         {
             PlayerId = playerId,
-            RemainingInLeg = _modeSettings.StartingScorePerLeg,
+            RemainingInLeg = _modeSettings.ScorePerLeg,
             LegsWonInSet = 0,
             SetsWonInMatch = 0
         };
@@ -88,7 +88,7 @@ public class ClassicSetsMode(ClassicSetsModeSettings modeSettings) : IGameMode
             }
 
             legWon = true;
-            currentRemaining = _modeSettings.StartingScorePerLeg;
+            currentRemaining = _modeSettings.ScorePerLeg;
             currentLegsWon++;
 
             // Special case of sudden death.
@@ -138,7 +138,7 @@ public class ClassicSetsMode(ClassicSetsModeSettings modeSettings) : IGameMode
 
         var updatedOther = opponentScore with
         {
-            RemainingInLeg = gameWon ? opponentRemaining : _modeSettings.StartingScorePerLeg,
+            RemainingInLeg = gameWon ? opponentRemaining : _modeSettings.ScorePerLeg,
             LegsWonInSet = gameWon ? opponentLegsWon : setWon ? 0 : opponentLegsWon,
             SetsWonInMatch = opponentSetsWon
         };
@@ -176,7 +176,7 @@ public class ClassicSetsMode(ClassicSetsModeSettings modeSettings) : IGameMode
     {
         return !_modeSettings.DoubleOutEnabled || throwData.Multiplier is 2;
     }
-    
+
     /// <summary>
     /// Checks if current set is a decider.
     /// In decider player must win by 2 legs.
@@ -205,6 +205,6 @@ public class ClassicSetsMode(ClassicSetsModeSettings modeSettings) : IGameMode
     private bool IsDeciderWon(int currentLegsWon, int opponentLegsWon)
     {
         return (currentLegsWon >= _modeSettings.LegsToWinSet && currentLegsWon >= opponentLegsWon + 2)
-               || currentLegsWon == _modeSettings.SuddenDeathWinningLeg;
+               || currentLegsWon >= _modeSettings.SuddenDeathWinningLeg;
     }
 }

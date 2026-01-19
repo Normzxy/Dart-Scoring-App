@@ -13,17 +13,17 @@ namespace Domain.Tests
     {
         private static (Game game, ClassicSetsMode mode, Player p1, Player p2, ClassicSetsPlayerScore s1, ClassicSetsPlayerScore s2, Dictionary<Guid, PlayerScore> allScores)
             Setup
-            (int startingScore = 201,
+            (int scorePerLeg = 201,
             bool doubleOutEnabled = false,
-            bool suddenDeath = false,
-            int setsToWin = 3,
+            bool suddenDeathEnabled = false,
+            int setsToWinMatch = 3,
             int suddenDeathWinningLeg = 6)
         {
             var settings = new ClassicSetsModeSettings(
-                startingScorePerLeg: startingScore,
+                scorePerLeg: scorePerLeg,
                 doubleOutEnabled: doubleOutEnabled,
-                suddenDeathEnabled: suddenDeath,
-                setsToWinMatch: setsToWin,
+                suddenDeathEnabled: suddenDeathEnabled,
+                setsToWinMatch: setsToWinMatch,
                 suddenDeathWinningLeg: suddenDeathWinningLeg
             );
 
@@ -190,7 +190,7 @@ namespace Domain.Tests
         public void Decider_continues_despite_legs_to_win_match_reached()
         {
             var (_, mode, p1, p2, s1, s2, allScores)
-                = Setup(suddenDeath: true);
+                = Setup(suddenDeathEnabled: true);
             allScores[p1.Id] = s1 with { RemainingInLeg = 20, LegsWonInSet = 2, SetsWonInMatch = 2 };
             allScores[p2.Id] = s2 with { RemainingInLeg = 30, LegsWonInSet = 2, SetsWonInMatch = 2 };
 
@@ -215,7 +215,7 @@ namespace Domain.Tests
         public void Decider_win_by_two_legs_in_sudden_death()
         {
             var (_, mode, p1, p2, s1, s2, allScores)
-                = Setup(suddenDeath: true);
+                = Setup(suddenDeathEnabled: true);
             allScores[p1.Id] = s1 with { RemainingInLeg = 20, LegsWonInSet = 3, SetsWonInMatch = 2 };
             allScores[p2.Id] = s2 with { RemainingInLeg = 30, LegsWonInSet = 2, SetsWonInMatch = 2 };
 
@@ -240,8 +240,7 @@ namespace Domain.Tests
         public void Decider_win_by_sudden_death_last_leg()
         {
             var (_, mode, p1, p2, s1, s2, allScores)
-                = Setup(suddenDeath: true);
-            // in decider: both at sets = 2
+                = Setup(suddenDeathEnabled: true);
             allScores[p1.Id] = s1 with { RemainingInLeg = 6, LegsWonInSet = 5, SetsWonInMatch = 2 };
             allScores[p2.Id] = s2 with { RemainingInLeg = 20, LegsWonInSet = 5, SetsWonInMatch = 2 };
 
