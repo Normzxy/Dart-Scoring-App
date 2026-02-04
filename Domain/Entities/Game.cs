@@ -36,7 +36,7 @@ public class Game
 
         foreach (var player in _players)
             _scoreStates[player.Id] = _gameMode.CreateInitialScore(player.Id);
-        
+
         _dartsThrown = 0;
         _currentPlayerIdx = 0;
         _legStartingPlayerIdx = 0;

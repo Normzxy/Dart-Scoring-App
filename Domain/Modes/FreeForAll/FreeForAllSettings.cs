@@ -7,7 +7,7 @@ public class FreeForAllSettings
     public int LegsToWinMatch { get; }
     public bool DoubleOutEnabled { get; }
 
-    private static readonly int[] AllowedStartingScores = [ 201, 301, 401, 501, 601, 701, 801, 901 ];
+    private static readonly int[] AllowedStartingScores = [ 101, 201, 301, 401, 501, 601, 701, 801, 901 ];
 
     public FreeForAllSettings(
         int dartsPerTurn = 3,
